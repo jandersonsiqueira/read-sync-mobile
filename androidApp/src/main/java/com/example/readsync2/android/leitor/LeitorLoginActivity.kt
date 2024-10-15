@@ -78,7 +78,8 @@ fun LoginScreen(context: LeitorLoginActivity) {
             color = MaterialTheme.colors.primary,
             modifier = Modifier
                 .clickable {
-                    // TODO: Navegar para a tela de cadastro
+                    val intent = Intent(context, CadastroActivity::class.java)
+                    startActivity(context, intent, null)
                 }
                 .padding(top = 4.dp)
         )
