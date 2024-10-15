@@ -17,11 +17,15 @@
             </intent-filter>
         </activity>
 
-        <!-- Declaração das outras telas do app -->
-        <activity android:name="com.example.readsync.LeitorLoginActivity" />
+        <!-- Telas para Admin -->
         <activity android:name="com.example.readsync.AdminLoginActivity" />
-        <activity android:name="com.example.readsync.TelaPrincipalLeitor" />
         <activity android:name="com.example.readsync.TelaPrincipalAdmin" />
+
+        <!-- Telas para Leitor -->
+
+        <activity android:name="com.example.readsync.LeitorLoginActivity" />
+        <activity android:name="com.example.readsync.TelaPrincipalLeitor" />
+        <activity android:name="com.example.readsync.CadastroActivity" />
 
     </application>
 

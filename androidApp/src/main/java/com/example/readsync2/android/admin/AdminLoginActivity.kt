@@ -47,7 +47,8 @@ fun AdminLoginScreen(context: AdminLoginActivity) {
             onValueChange = { codigoAcesso = it },
             label = { Text("Código de Acesso") },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            visualTransformation = PasswordVisualTransformation()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
