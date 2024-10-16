@@ -27,6 +27,7 @@
         <activity android:name="com.example.readsync.LeitorLoginActivity" />
         <activity android:name="com.example.readsync.TelaPrincipalLeitor" />
         <activity android:name="com.example.readsync.CadastroActivity" />
+        <activity android:name="com.example.readsync.LivroDetalhesActivity" />
 
     </application>
 
