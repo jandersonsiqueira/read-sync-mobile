@@ -20,6 +20,7 @@
         <!-- Telas para Admin -->
         <activity android:name="com.example.readsync.AdminLoginActivity" />
         <activity android:name="com.example.readsync.TelaPrincipalAdmin" />
+        <activity android:name="com.example.readsync.LivroFormActivity" />
 
         <!-- Telas para Leitor -->
 
