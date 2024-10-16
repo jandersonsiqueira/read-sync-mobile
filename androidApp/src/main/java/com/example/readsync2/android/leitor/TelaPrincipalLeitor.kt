@@ -1,5 +1,6 @@
 package com.example.readsync
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -94,12 +95,15 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                     )
                 }
                 items(livros) { livro ->
-                    LivroCard(livro = livro) { updatedBook ->
+                    LivroCard(livro = livro, onFavoriteClick = { updatedBook ->
                         val updatedList = livrosPorGenero[genero]?.map {
                             if (it.titulo == updatedBook.titulo) updatedBook else it
                         } ?: listOf()
                         livrosPorGenero[genero] = updatedList
-                    }
+                    }, onBookClick = {
+                        val intent = Intent(context, LivroDetalhesActivity::class.java)
+                        context.startActivity(intent)
+                    })
                 }
             }
         }
@@ -107,11 +111,12 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
 }
 
 @Composable
-fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit) {
+fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livro) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable { onBookClick(livro) },
         elevation = 2.dp
     ) {
         Row(
