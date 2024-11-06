@@ -21,14 +21,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.readsync2.android.R
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.auth.GoogleAuthProvider
 import com.google.android.gms.common.api.ApiException
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.text.KeyboardOptions
+import com.google.firebase.auth.*
 
 class LeitorLoginActivity : ComponentActivity() {
     private lateinit var auth: FirebaseAuth
@@ -62,6 +61,9 @@ fun LoginScreen(context: LeitorLoginActivity, auth: FirebaseAuth) {
     var email by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+
+    val setErrorMessage: (String) -> Unit = { message -> errorMessage = message }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -99,7 +101,6 @@ fun LoginScreen(context: LeitorLoginActivity, auth: FirebaseAuth) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Botão "Cadastre-se"
         Text(
             text = "Cadastre-se",
             color = MaterialTheme.colors.primary,
@@ -119,23 +120,31 @@ fun LoginScreen(context: LeitorLoginActivity, auth: FirebaseAuth) {
             modifier = Modifier
                 .size(48.dp)
                 .clickable {
+                    isLoading = true
                     googleSignIn(context)
                 }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                if (validateInputs(email, senha)) {
-                    loginWithEmail(email, senha, auth, context)
-                } else {
-                    errorMessage = "Por favor, insira um e-mail e senha válidos!"
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Entrar")
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            Button(
+                onClick = {
+                    if (validateInputs(email, senha)) {
+                        isLoading = true
+                        loginWithEmail(email, senha, auth, context, setErrorMessage) {
+                            isLoading = false
+                        }
+                    } else {
+                        setErrorMessage("Por favor, insira um e-mail e senha válidos!")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Entrar")
+            }
         }
     }
 }
@@ -145,9 +154,17 @@ fun validateInputs(email: String, senha: String): Boolean {
     return email.matches(emailRegex) && senha.isNotEmpty()
 }
 
-fun loginWithEmail(email: String, senha: String, auth: FirebaseAuth, context: Context) {
+fun loginWithEmail(
+    email: String,
+    senha: String,
+    auth: FirebaseAuth,
+    context: Context,
+    setErrorMessage: (String) -> Unit,
+    onComplete: () -> Unit
+) {
     auth.signInWithEmailAndPassword(email, senha)
         .addOnCompleteListener { task ->
+            onComplete()
             if (task.isSuccessful) {
                 val user = auth.currentUser
                 user?.let {
@@ -155,13 +172,20 @@ fun loginWithEmail(email: String, senha: String, auth: FirebaseAuth, context: Co
                     startActivity(context, intent, null)
                 }
             } else {
-                Log.e("LoginError", "Erro ao tentar fazer login: ${task.exception?.message}")
+                val errorMessage = when {
+                    task.exception?.message?.contains("INVALID_LOGIN_CREDENTIALS") == true -> "Credenciais inválidas. Verifique seu e-mail e senha."
+                    else -> "Erro ao tentar fazer login: ${task.exception?.message}"
+                }
+
+                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+
+                setErrorMessage(errorMessage)
+                Log.e("LoginError", errorMessage)
             }
         }
 }
 
 fun googleSignIn(context: LeitorLoginActivity) {
-    // Configuração do Google Sign-In
     val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
         .requestIdToken(context.getString(R.string.default_web_client_id2))
         .requestEmail()
@@ -171,8 +195,8 @@ fun googleSignIn(context: LeitorLoginActivity) {
     val signInIntent = googleSignInClient.signInIntent
     context.startActivityForResult(signInIntent, RC_SIGN_IN)
 }
-fun firebaseAuthWithGoogle(idToken: String, auth: FirebaseAuth, context: Context) {
 
+fun firebaseAuthWithGoogle(idToken: String, auth: FirebaseAuth, context: Context) {
     val credential = GoogleAuthProvider.getCredential(idToken, null)
     auth.signInWithCredential(credential)
         .addOnCompleteListener { task ->
@@ -189,7 +213,6 @@ fun firebaseAuthWithGoogle(idToken: String, auth: FirebaseAuth, context: Context
             }
         }
 }
-
 
 @Preview(showBackground = true)
 @Composable

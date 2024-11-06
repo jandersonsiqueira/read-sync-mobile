@@ -28,7 +28,7 @@ class AdminLoginActivity : ComponentActivity() {
     }
 }
 
-fun validateAccessCode(context: AdminLoginActivity, inputCode: String, onSuccess: () -> Unit) {
+fun validateAccessCode(context: AdminLoginActivity, inputCode: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val docRef = db.collection("adminCodes").document("adminAccessCode")
 
@@ -39,18 +39,22 @@ fun validateAccessCode(context: AdminLoginActivity, inputCode: String, onSuccess
                 onSuccess()
             } else {
                 Toast.makeText(context, "Código de acesso incorreto", Toast.LENGTH_SHORT).show()
+                onFailure()
             }
         } else {
             Toast.makeText(context, "Documento não encontrado", Toast.LENGTH_SHORT).show()
+            onFailure()
         }
     }.addOnFailureListener {
         Toast.makeText(context, "Erro ao acessar o Firestore", Toast.LENGTH_SHORT).show()
+        onFailure()
     }
 }
 
 @Composable
 fun AdminLoginScreen(context: AdminLoginActivity) {
     var codigoAcesso by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -77,14 +81,29 @@ fun AdminLoginScreen(context: AdminLoginActivity) {
 
         Button(
             onClick = {
-                validateAccessCode(context, codigoAcesso) {
-                    val intent = Intent(context, TelaPrincipalAdmin::class.java)
-                    startActivity(context, intent, null)
-                }
+                isLoading = true
+                validateAccessCode(
+                    context,
+                    codigoAcesso,
+                    onSuccess = {
+                        isLoading = false
+                        val intent = Intent(context, TelaPrincipalAdmin::class.java)
+                        startActivity(context, intent, null)
+                    },
+                    onFailure = {
+                        isLoading = false
+                    }
+                )
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         ) {
             Text("Entrar")
+        }
+
+        if (isLoading) {
+            Spacer(modifier = Modifier.height(16.dp))
+            CircularProgressIndicator()
         }
     }
 }
