@@ -16,6 +16,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
+import com.google.firebase.firestore.FirebaseFirestore
+import android.widget.Toast
 
 class AdminLoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,9 +28,33 @@ class AdminLoginActivity : ComponentActivity() {
     }
 }
 
+fun validateAccessCode(context: AdminLoginActivity, inputCode: String, onSuccess: () -> Unit, onFailure: () -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    val docRef = db.collection("adminCodes").document("adminAccessCode")
+
+    docRef.get().addOnSuccessListener { document ->
+        if (document != null) {
+            val storedCode = document.getString("codigo")
+            if (storedCode == inputCode) {
+                onSuccess()
+            } else {
+                Toast.makeText(context, "Código de acesso incorreto", Toast.LENGTH_SHORT).show()
+                onFailure()
+            }
+        } else {
+            Toast.makeText(context, "Documento não encontrado", Toast.LENGTH_SHORT).show()
+            onFailure()
+        }
+    }.addOnFailureListener {
+        Toast.makeText(context, "Erro ao acessar o Firestore", Toast.LENGTH_SHORT).show()
+        onFailure()
+    }
+}
+
 @Composable
 fun AdminLoginScreen(context: AdminLoginActivity) {
     var codigoAcesso by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -55,15 +81,29 @@ fun AdminLoginScreen(context: AdminLoginActivity) {
 
         Button(
             onClick = {
-                // TODO: Validar o código de acesso
-                // Se o código for válido, navegue para TelaPrincipalAdmin
-
-                val intent = Intent(context, TelaPrincipalAdmin::class.java)
-                startActivity(context, intent, null)
+                isLoading = true
+                validateAccessCode(
+                    context,
+                    codigoAcesso,
+                    onSuccess = {
+                        isLoading = false
+                        val intent = Intent(context, TelaPrincipalAdmin::class.java)
+                        startActivity(context, intent, null)
+                    },
+                    onFailure = {
+                        isLoading = false
+                    }
+                )
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
         ) {
             Text("Entrar")
+        }
+
+        if (isLoading) {
+            Spacer(modifier = Modifier.height(16.dp))
+            CircularProgressIndicator()
         }
     }
 }
