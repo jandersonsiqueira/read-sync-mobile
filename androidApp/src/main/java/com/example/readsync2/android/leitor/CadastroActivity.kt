@@ -2,6 +2,7 @@ package com.example.readsync
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -18,18 +19,77 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
 import com.example.readsync2.android.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.Task
 
 class CadastroActivity : ComponentActivity() {
+    private lateinit var auth: FirebaseAuth
+    private lateinit var googleSignInClient: GoogleSignInClient
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        auth = FirebaseAuth.getInstance()
+
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id2))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
         setContent {
-            CadastroScreen(context = this)
+            CadastroScreen(context = this, auth = auth, googleSignInClient = googleSignInClient)
         }
+    }
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == RC_SIGN_IN) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+
+            try {
+                val account = task.getResult(ApiException::class.java)!!
+                firebaseAuthWithGoogle(account.idToken!!)
+            } catch (e: ApiException)
+            {
+                val statusCode = e.statusCode
+                when (statusCode) {
+                    // STATUS_CANCELED, STATUS_INTERRUPTED, etc.
+                    else -> {
+                        Log.e("GoogleSignIn", "Erro desconhecido: $e")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun firebaseAuthWithGoogle(idToken: String) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    val intent = Intent(this, TelaPrincipalLeitor::class.java)
+                    startActivity(intent)
+                } else {
+                }
+            }
     }
 }
 
+const val RC_SIGN_IN = 9001
+
 @Composable
-fun CadastroScreen(context: CadastroActivity) {
+fun CadastroScreen(
+    context: CadastroActivity,
+    auth: FirebaseAuth,
+    googleSignInClient: GoogleSignInClient
+) {
     var usuario by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -76,7 +136,15 @@ fun CadastroScreen(context: CadastroActivity) {
 
         Button(
             onClick = {
-
+                auth.createUserWithEmailAndPassword(email, senha)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val intent = Intent(context, TelaPrincipalLeitor::class.java)
+                            startActivity(context, intent, null)
+                        } else {
+                            // Exibir mensagem de erro
+                        }
+                    }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -91,7 +159,8 @@ fun CadastroScreen(context: CadastroActivity) {
             modifier = Modifier
                 .size(48.dp)
                 .clickable {
-                    // TODO: Implementar o login com Google
+                    val signInIntent = googleSignInClient.signInIntent
+                    context.startActivityForResult(signInIntent, RC_SIGN_IN)
                 }
         )
     }
@@ -100,5 +169,5 @@ fun CadastroScreen(context: CadastroActivity) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreviewCadastroActivity() {
-    CadastroScreen(context = CadastroActivity())
+    CadastroScreen(context = CadastroActivity(), auth = FirebaseAuth.getInstance(), googleSignInClient = GoogleSignIn.getClient(CadastroActivity(), GoogleSignInOptions.DEFAULT_SIGN_IN))
 }

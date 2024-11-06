@@ -1,7 +1,9 @@
 package com.example.readsync
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -16,29 +18,50 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.example.readsync2.android.R
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.android.gms.common.api.ApiException
+import android.content.Context
+import androidx.compose.foundation.text.KeyboardOptions
 
 class LeitorLoginActivity : ComponentActivity() {
+    private lateinit var auth: FirebaseAuth
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        auth = FirebaseAuth.getInstance()
         setContent {
-            LoginScreen(context = this)
+            LoginScreen(context = this, auth = auth)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == RC_SIGN_IN) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                account?.let {
+                    firebaseAuthWithGoogle(it.idToken!!, auth, this)
+                }
+            } catch (e: ApiException) {
+                Log.e("GoogleSignInError", "Erro no login com o Google: ${e.statusCode}")
+            }
         }
     }
 }
 
 @Composable
-fun LoginScreen(context: LeitorLoginActivity) {
+fun LoginScreen(context: LeitorLoginActivity, auth: FirebaseAuth) {
     var email by remember { mutableStateOf("") }
     var senha by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -70,6 +93,10 @@ fun LoginScreen(context: LeitorLoginActivity) {
             visualTransformation = PasswordVisualTransformation()
         )
 
+        if (errorMessage.isNotEmpty()) {
+            Text(text = errorMessage, color = MaterialTheme.colors.error)
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
         // Botão "Cadastre-se"
@@ -86,14 +113,13 @@ fun LoginScreen(context: LeitorLoginActivity) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Botão "Login com Google"
         Image(
             painter = painterResource(id = R.drawable.ic_google),
             contentDescription = "Login com Google",
             modifier = Modifier
                 .size(48.dp)
                 .clickable {
-                    // TODO: Implementar o login com Google
+                    googleSignIn(context)
                 }
         )
 
@@ -101,11 +127,11 @@ fun LoginScreen(context: LeitorLoginActivity) {
 
         Button(
             onClick = {
-                // TODO: Validar email e senha
-                // Se as credenciais forem válidas, navegue para TelaPrincipalLeitor
-
-                val intent = Intent(context, TelaPrincipalLeitor::class.java)
-                startActivity(context, intent, null)
+                if (validateInputs(email, senha)) {
+                    loginWithEmail(email, senha, auth, context)
+                } else {
+                    errorMessage = "Por favor, insira um e-mail e senha válidos!"
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -114,8 +140,59 @@ fun LoginScreen(context: LeitorLoginActivity) {
     }
 }
 
+fun validateInputs(email: String, senha: String): Boolean {
+    val emailRegex = "[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}".toRegex()
+    return email.matches(emailRegex) && senha.isNotEmpty()
+}
+
+fun loginWithEmail(email: String, senha: String, auth: FirebaseAuth, context: Context) {
+    auth.signInWithEmailAndPassword(email, senha)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val user = auth.currentUser
+                user?.let {
+                    val intent = Intent(context, TelaPrincipalLeitor::class.java)
+                    startActivity(context, intent, null)
+                }
+            } else {
+                Log.e("LoginError", "Erro ao tentar fazer login: ${task.exception?.message}")
+            }
+        }
+}
+
+fun googleSignIn(context: LeitorLoginActivity) {
+    // Configuração do Google Sign-In
+    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        .requestIdToken(context.getString(R.string.default_web_client_id2))
+        .requestEmail()
+        .build()
+    val googleSignInClient = GoogleSignIn.getClient(context, gso)
+
+    val signInIntent = googleSignInClient.signInIntent
+    context.startActivityForResult(signInIntent, RC_SIGN_IN)
+}
+fun firebaseAuthWithGoogle(idToken: String, auth: FirebaseAuth, context: Context) {
+
+    val credential = GoogleAuthProvider.getCredential(idToken, null)
+    auth.signInWithCredential(credential)
+        .addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val user = auth.currentUser
+                user?.let {
+                    Log.d("GoogleSignIn", "Login bem-sucedido com o Google")
+                    val intent = Intent(context, TelaPrincipalLeitor::class.java)
+                    context.startActivity(intent)
+                    (context as? Activity)?.finish()
+                }
+            } else {
+                Log.e("GoogleSignInError", "Erro ao fazer login com o Google: ${task.exception?.message}")
+            }
+        }
+}
+
+
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreviewLeitorLoginActivity() {
-    LoginScreen(context = LeitorLoginActivity())
+    LoginScreen(context = LeitorLoginActivity(), auth = FirebaseAuth.getInstance())
 }

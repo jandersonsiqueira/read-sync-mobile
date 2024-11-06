@@ -16,6 +16,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
+import com.google.firebase.firestore.FirebaseFirestore
+import android.widget.Toast
 
 class AdminLoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,6 +25,26 @@ class AdminLoginActivity : ComponentActivity() {
         setContent {
             AdminLoginScreen(context = this)
         }
+    }
+}
+
+fun validateAccessCode(context: AdminLoginActivity, inputCode: String, onSuccess: () -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    val docRef = db.collection("adminCodes").document("adminAccessCode")
+
+    docRef.get().addOnSuccessListener { document ->
+        if (document != null) {
+            val storedCode = document.getString("codigo")
+            if (storedCode == inputCode) {
+                onSuccess()
+            } else {
+                Toast.makeText(context, "Código de acesso incorreto", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Documento não encontrado", Toast.LENGTH_SHORT).show()
+        }
+    }.addOnFailureListener {
+        Toast.makeText(context, "Erro ao acessar o Firestore", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -55,11 +77,10 @@ fun AdminLoginScreen(context: AdminLoginActivity) {
 
         Button(
             onClick = {
-                // TODO: Validar o código de acesso
-                // Se o código for válido, navegue para TelaPrincipalAdmin
-
-                val intent = Intent(context, TelaPrincipalAdmin::class.java)
-                startActivity(context, intent, null)
+                validateAccessCode(context, codigoAcesso) {
+                    val intent = Intent(context, TelaPrincipalAdmin::class.java)
+                    startActivity(context, intent, null)
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
