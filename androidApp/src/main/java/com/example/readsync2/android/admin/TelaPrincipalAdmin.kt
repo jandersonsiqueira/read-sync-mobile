@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -42,7 +43,10 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
                 Livro2("Livro de Comédia", "Autor 2")
             ),
             "Stand-Alone" to listOf(
-                Livro2("Livro Stand-Alone", "Autor 3")
+                Livro2("Livro Stand-Alone", "Autor 3"),
+                Livro2("Livro Stand-Alone 2", "Autor 3"),
+                Livro2("Livro Stand-Alone 3", "Autor 3"),
+                Livro2("Livro Stand-Alone 4", "Autor 3")
             )
         )
     }
@@ -90,9 +94,17 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                }
-                items(livros) { livro ->
-                    LivroCardAdmin(livro = livro, context = context)
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(livros) { livro ->
+                            LivroCardAdmin(livro = livro, context = context)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -103,26 +115,27 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
 fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = 2.dp
+            .width(200.dp)
+            .height(300.dp)
+            .padding(8.dp),
+        elevation = 4.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_book),
                 contentDescription = "Capa do livro",
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 8.dp)
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
-
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = livro.titulo,
@@ -135,27 +148,32 @@ fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            IconButton(onClick = {
-                val intent = Intent(context, LivroFormActivity::class.java).apply {
-                    putExtra("isEditMode", true)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                IconButton(onClick = {
+                    val intent = Intent(context, LivroFormActivity::class.java).apply {
+                        putExtra("isEditMode", true)
+                    }
+                    context.startActivity(intent)
+                }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_edit),
+                        contentDescription = "Editar Livro"
+                    )
                 }
-                context.startActivity(intent)
-            }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_edit),
-                    contentDescription = "Editar Livro"
-                )
-            }
 
-            IconButton(onClick = {
+                IconButton(onClick = {
 
-            }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_delete),
-                    contentDescription = "Excluir Livro"
-                )
+                }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_delete),
+                        contentDescription = "Excluir Livro"
+                    )
+                }
             }
         }
     }

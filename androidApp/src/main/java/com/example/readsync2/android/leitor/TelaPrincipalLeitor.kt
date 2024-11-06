@@ -2,12 +2,14 @@ package com.example.readsync
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -43,7 +45,10 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                 Livro("Livro de Comédia", "Autor 2", isFavorite = false)
             ),
             "Stand-Alone" to listOf(
-                Livro("Livro Stand-Alone", "Autor 3", isFavorite = false)
+                Livro("Livro Stand-Alone", "Autor 3", isFavorite = false),
+                Livro("Livro Stand-Alone 2", "Autor 3", isFavorite = false),
+                Livro("Livro Stand-Alone 3", "Autor 3", isFavorite = false),
+                Livro("Livro Stand-Alone 4", "Autor 3", isFavorite = false)
             )
         )
     }
@@ -94,16 +99,25 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
-                items(livros) { livro ->
-                    LivroCard(livro = livro, onFavoriteClick = { updatedBook ->
-                        val updatedList = livrosPorGenero[genero]?.map {
-                            if (it.titulo == updatedBook.titulo) updatedBook else it
-                        } ?: listOf()
-                        livrosPorGenero[genero] = updatedList
-                    }, onBookClick = {
-                        val intent = Intent(context, LivroDetalhesActivity::class.java)
-                        context.startActivity(intent)
-                    })
+                item {
+                    LazyRow {
+                        items(livros) { livro ->
+                            LivroCard(
+                                livro = livro,
+                                onFavoriteClick = { updatedBook ->
+                                    val updatedList = livrosPorGenero[genero]?.map {
+                                        if (it.titulo == updatedBook.titulo) updatedBook else it
+                                    } ?: listOf()
+                                    livrosPorGenero[genero] = updatedList
+                                },
+                                onBookClick = {
+                                    Log.d("LivroCard", "Livro clicado: ${livro.titulo}")
+                                    val intent = Intent(context, LivroDetalhesActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -114,27 +128,28 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
 fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livro) -> Unit) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onBookClick(livro) },
-        elevation = 2.dp
+            .width(200.dp)
+            .height(300.dp)
+            .clickable { onBookClick(livro) }
+            .padding(8.dp),
+        elevation = 4.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_book),
                 contentDescription = "Capa do livro",
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 8.dp)
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
-
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = livro.titulo,
@@ -147,7 +162,7 @@ fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livr
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             Image(
                 painter = painterResource(
