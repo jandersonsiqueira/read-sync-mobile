@@ -3,6 +3,9 @@ package com.example.readsync
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import android.speech.tts.TextToSpeech
+import android.speech.tts.TextToSpeech.OnInitListener
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.*
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +41,23 @@ fun LivroDetalhesScreen(livroId: String?) {
     var comentario by remember { mutableStateOf("") }
     var listaComentarios by remember { mutableStateOf(listOf<String>()) }
     val db = FirebaseFirestore.getInstance()
+
+    val context = LocalContext.current
+    var tts: TextToSpeech? by remember { mutableStateOf(null) }
+
+    // Inicializando o TextToSpeech
+    LaunchedEffect(context) {
+        tts = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val langResult = tts?.setLanguage(Locale("pt", "BR"))
+                if (langResult != TextToSpeech.LANG_AVAILABLE) {
+                    Log.e("TTS", "Idioma não disponível.")
+                }
+            } else {
+                Log.e("TTS", "Falha na inicialização do TTS.")
+            }
+        }
+    }
 
     LaunchedEffect(livroId) {
         if (livroId != null) {
@@ -98,34 +119,19 @@ fun LivroDetalhesScreen(livroId: String?) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Descrição: ${descricao.text}",
-                fontSize = 16.sp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Seção visual de áudio (não funcional por enquanto)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 8.dp)
-            ) {
-                IconButton(onClick = { /* Simular play/pause */ }) {
+            // Descrição do livro com botão de áudio
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Descrição: ${descricao.text}",
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = {
+                    tts?.speak(descricao.text, TextToSpeech.QUEUE_FLUSH, null, null)
+                }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_play),
-                        contentDescription = "Play",
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-
-                Text(text = "00:00 / 03:45", fontSize = 14.sp)
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                IconButton(onClick = { /* Simular pausa */ }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_pause),
-                        contentDescription = "Pause",
+                        contentDescription = "Ler descrição",
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -133,15 +139,26 @@ fun LivroDetalhesScreen(livroId: String?) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Exibe os comentários
+            // Seção de comentários com botão de áudio
             if (listaComentarios.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 80.dp) // Espaço para a seção de adicionar comentários
+                        .padding(bottom = 80.dp)
                 ) {
                     items(listaComentarios) { comentario ->
-                        Text(text = comentario, modifier = Modifier.padding(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = comentario, modifier = Modifier.weight(1f))
+                            IconButton(onClick = {
+                                tts?.speak(comentario, TextToSpeech.QUEUE_FLUSH, null, null)
+                            }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_play),
+                                    contentDescription = "Ler comentário",
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
                     }
                 }
             } else {
