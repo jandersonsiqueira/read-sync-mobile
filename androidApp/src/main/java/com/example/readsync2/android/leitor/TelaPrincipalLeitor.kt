@@ -49,8 +49,9 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                     val autor = doc.getString("autor")
                     val genero = doc.getString("genero")
                     val isFavorite = doc.getBoolean("isFavorite") ?: false
+                    val id = doc.id
                     if (titulo != null && autor != null && genero != null) {
-                        genero to Livro(titulo, autor, isFavorite)
+                        genero to Livro(id, titulo, autor, isFavorite)
                     } else {
                         null
                     }
@@ -138,7 +139,9 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                                 },
                                 onBookClick = {
                                     Log.d("LivroCard", "Livro clicado: ${livro.titulo}")
-                                    val intent = Intent(context, LivroDetalhesActivity::class.java)
+                                    val intent = Intent(context, LivroDetalhesActivity::class.java).apply {
+                                        putExtra("livroId", livro.id)
+                                    }
                                     context.startActivity(intent)
                                 }
                             )
@@ -205,7 +208,7 @@ fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livr
     }
 }
 
-data class Livro(val titulo: String, val autor: String, var isFavorite: Boolean)
+data class Livro(val id: String, val titulo: String, val autor: String, var isFavorite: Boolean)
 
 @Preview(showBackground = true)
 @Composable

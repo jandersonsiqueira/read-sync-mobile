@@ -11,30 +11,64 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.readsync2.android.R
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val livroId = intent.getStringExtra("livroId")
         setContent {
-            LivroDetalhesScreen()
+            LivroDetalhesScreen(livroId = livroId)
         }
     }
 }
 
 @Composable
-fun LivroDetalhesScreen() {
-    var comentario by remember { mutableStateOf("") }
-    var listaComentarios by remember { mutableStateOf(listOf<String>()) }
+fun LivroDetalhesScreen(livroId: String?) {
+    var descricao by remember { mutableStateOf(TextFieldValue("")) }
+
+    val db = FirebaseFirestore.getInstance()
+
+    LaunchedEffect(livroId) {
+        if (livroId != null) {
+            // Acessando o documento corretamente
+            db.collection("livros").document(livroId).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        // Garantir que o campo 'descricao' existe e é do tipo String
+                        val descricaoCampo = doc.getString("descricao")
+                        if (descricaoCampo != null) {
+                            descricao = TextFieldValue(descricaoCampo)
+                        } else {
+                            println("Descrição não encontrada ou campo não é uma string.")
+                        }
+                    } else {
+                        println("Documento não encontrado.")
+                    }
+                }
+                .addOnFailureListener { e ->
+                    println("Erro ao buscar detalhes do livro: ${e.message}")
+                }
+        } else {
+            println("ID do livro está vazio.")
+        }
+    }
+
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Capa do livro
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
@@ -48,8 +82,10 @@ fun LivroDetalhesScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
-            text = "Descrição do livro: Este é um excelente livro sobre o tema.",
+            text = "Descrição: ${descricao.text}",
             fontSize = 16.sp
         )
 
@@ -82,7 +118,17 @@ fun LivroDetalhesScreen() {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        var comentario by remember { mutableStateOf("") }
+        var listaComentarios by remember { mutableStateOf(listOf<String>()) }
 
+        // Exibe os comentários
+        LazyColumn {
+            items(listaComentarios) { comentario ->
+                Text(text = comentario, modifier = Modifier.padding(8.dp))
+            }
+        }
+
+        // Seção para adicionar comentários
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = comentario,
@@ -109,10 +155,5 @@ fun LivroDetalhesScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn {
-            items(listaComentarios) { comentario ->
-                Text(text = comentario, modifier = Modifier.padding(8.dp))
-            }
-        }
     }
 }
