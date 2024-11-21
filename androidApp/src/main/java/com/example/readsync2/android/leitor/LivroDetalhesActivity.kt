@@ -34,6 +34,8 @@ class LivroDetalhesActivity : ComponentActivity() {
 @Composable
 fun LivroDetalhesScreen(livroId: String?) {
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
+    var comentario by remember { mutableStateOf("") }
+    var listaComentarios by remember { mutableStateOf(listOf<String>()) }
 
     val db = FirebaseFirestore.getInstance()
 
@@ -62,74 +64,80 @@ fun LivroDetalhesScreen(livroId: String?) {
         }
     }
 
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Capa do livro
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_book),
-                contentDescription = "Capa do livro",
-                modifier = Modifier.size(128.dp)
+            // Capa do livro
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_book),
+                    contentDescription = "Capa do livro",
+                    modifier = Modifier.size(128.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Descrição: ${descricao.text}",
+                fontSize = 16.sp
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Seção visual de áudio (não funcional por enquanto)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                IconButton(onClick = { /* Simular play/pause */ }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_play),
+                        contentDescription = "Play",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                Text(text = "00:00 / 03:45", fontSize = 14.sp)
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                IconButton(onClick = { /* Simular pausa */ }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_pause),
+                        contentDescription = "Pause",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Exibe os comentários
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 80.dp) // Espaço para a seção de adicionar comentários
+            ) {
+                items(listaComentarios) { comentario ->
+                    Text(text = comentario, modifier = Modifier.padding(8.dp))
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Descrição: ${descricao.text}",
-            fontSize = 16.sp
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Seção visual de áudio (não funcional por enquanto)
+        // Seção fixa para adicionar comentários
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .align(Alignment.BottomCenter) // Fixa no fundo da tela
         ) {
-            IconButton(onClick = { /* Simular play/pause */ }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_play),
-                    contentDescription = "Play",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            Text(text = "00:00 / 03:45", fontSize = 14.sp)
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            IconButton(onClick = { /* Simular pausa */ }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_pause),
-                    contentDescription = "Pause",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        var comentario by remember { mutableStateOf("") }
-        var listaComentarios by remember { mutableStateOf(listOf<String>()) }
-
-        // Exibe os comentários
-        LazyColumn {
-            items(listaComentarios) { comentario ->
-                Text(text = comentario, modifier = Modifier.padding(8.dp))
-            }
-        }
-
-        // Seção para adicionar comentários
-        Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = comentario,
                 onValueChange = { comentario = it },
@@ -152,8 +160,5 @@ fun LivroDetalhesScreen(livroId: String?) {
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
     }
 }
