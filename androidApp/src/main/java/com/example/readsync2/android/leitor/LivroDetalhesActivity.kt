@@ -3,6 +3,9 @@ package com.example.readsync
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import android.speech.tts.TextToSpeech
+import android.speech.tts.TextToSpeech.OnInitListener
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,79 +14,166 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.readsync2.android.R
+import com.google.firebase.firestore.FirebaseFirestore
+import java.util.*
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val livroId = intent.getStringExtra("livroId")
         setContent {
-            LivroDetalhesScreen()
+            LivroDetalhesScreen(livroId = livroId)
         }
     }
 }
 
 @Composable
-fun LivroDetalhesScreen() {
+fun LivroDetalhesScreen(livroId: String?) {
+    var descricao by remember { mutableStateOf(TextFieldValue("")) }
     var comentario by remember { mutableStateOf("") }
     var listaComentarios by remember { mutableStateOf(listOf<String>()) }
+    val db = FirebaseFirestore.getInstance()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+    val context = LocalContext.current
+    var tts: TextToSpeech? by remember { mutableStateOf(null) }
+
+    // Inicializando o TextToSpeech
+    LaunchedEffect(context) {
+        tts = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val langResult = tts?.setLanguage(Locale("pt", "BR"))
+                if (langResult != TextToSpeech.LANG_AVAILABLE) {
+                    Log.e("TTS", "Idioma não disponível.")
+                }
+            } else {
+                Log.e("TTS", "Falha na inicialização do TTS.")
+            }
+        }
+    }
+
+    LaunchedEffect(livroId) {
+        if (livroId != null) {
+            // Acessando o documento do livro
+            db.collection("livros").document(livroId).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        // Garantir que o campo 'descricao' existe e é do tipo String
+                        val descricaoCampo = doc.getString("descricao")
+                        if (descricaoCampo != null) {
+                            descricao = TextFieldValue(descricaoCampo)
+                        } else {
+                            println("Descrição não encontrada ou campo não é uma string.")
+                        }
+                    } else {
+                        println("Documento não encontrado.")
+                    }
+                }
+                .addOnFailureListener { e ->
+                    println("Erro ao buscar detalhes do livro: ${e.message}")
+                }
+
+            // Carregar os comentários do Firestore
+            db.collection("comentarios")
+                .whereEqualTo("livroId", livroId) // Filtra pelos comentários do livro específico
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    // Mapeia os comentários do Firestore para uma lista
+                    val comentarios = snapshot.documents.mapNotNull { document ->
+                        document.getString("comentario")
+                    }
+                    listaComentarios = comentarios // Atualiza a lista local com os comentários
+                }
+                .addOnFailureListener { e ->
+                    println("Erro ao carregar os comentários: ${e.message}")
+                }
+        } else {
+            println("ID do livro está vazio.")
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_book),
-                contentDescription = "Capa do livro",
-                modifier = Modifier.size(128.dp)
-            )
+            // Capa do livro
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_book),
+                    contentDescription = "Capa do livro",
+                    modifier = Modifier.size(128.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Descrição do livro com botão de áudio
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Descrição: ${descricao.text}",
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = {
+                    tts?.speak(descricao.text, TextToSpeech.QUEUE_FLUSH, null, null)
+                }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_play),
+                        contentDescription = "Ler descrição",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Seção de comentários com botão de áudio
+            if (listaComentarios.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 80.dp)
+                ) {
+                    items(listaComentarios) { comentario ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = comentario, modifier = Modifier.weight(1f))
+                            IconButton(onClick = {
+                                tts?.speak(comentario, TextToSpeech.QUEUE_FLUSH, null, null)
+                            }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_play),
+                                    contentDescription = "Ler comentário",
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Exibe uma mensagem caso não haja comentários
+                Text(text = "Ainda não há comentários para este livro.", modifier = Modifier.padding(8.dp))
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Descrição do livro: Este é um excelente livro sobre o tema.",
-            fontSize = 16.sp
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Seção visual de áudio (não funcional por enquanto)
+        // Seção fixa para adicionar comentários
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .align(Alignment.BottomCenter) // Fixa no fundo da tela
         ) {
-            IconButton(onClick = { /* Simular play/pause */ }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_play),
-                    contentDescription = "Play",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            Text(text = "00:00 / 03:45", fontSize = 14.sp)
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            IconButton(onClick = { /* Simular pausa */ }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_pause),
-                    contentDescription = "Pause",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = comentario,
                 onValueChange = { comentario = it },
@@ -94,9 +184,23 @@ fun LivroDetalhesScreen() {
             Spacer(modifier = Modifier.width(8.dp))
 
             IconButton(onClick = {
-                if (comentario.isNotEmpty()) {
-                    listaComentarios = listaComentarios + comentario
-                    comentario = ""
+                if (comentario.isNotEmpty() && livroId != null) {
+                    // Salvar o comentário no Firestore
+                    val comentarioData = hashMapOf(
+                        "livroId" to livroId,
+                        "comentario" to comentario
+                    )
+
+                    db.collection("comentarios")
+                        .add(comentarioData)
+                        .addOnSuccessListener {
+                            // Adicionando o comentário à lista local
+                            listaComentarios = listaComentarios + comentario
+                            comentario = "" // Limpar o campo de comentário
+                        }
+                        .addOnFailureListener { e ->
+                            println("Erro ao adicionar comentário: ${e.message}")
+                        }
                 }
             }) {
                 Icon(
@@ -104,14 +208,6 @@ fun LivroDetalhesScreen() {
                     contentDescription = "Enviar",
                     modifier = Modifier.size(32.dp)
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn {
-            items(listaComentarios) { comentario ->
-                Text(text = comentario, modifier = Modifier.padding(8.dp))
             }
         }
     }

@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.readsync2.android.R
+import com.google.firebase.firestore.FirebaseFirestore
 
 class TelaPrincipalLeitor : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,24 +36,35 @@ class TelaPrincipalLeitor : ComponentActivity() {
 fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
     var searchQuery by remember { mutableStateOf("") }
     var showFavorites by remember { mutableStateOf(false) }
+    var livrosPorGenero by remember { mutableStateOf(mapOf<String, List<Livro>>()) }
 
-    val livrosPorGenero = remember {
-        mutableStateMapOf(
-            "Terror" to listOf(
-                Livro("Livro de Terror", "Autor 1", isFavorite = false)
-            ),
-            "Comédia" to listOf(
-                Livro("Livro de Comédia", "Autor 2", isFavorite = false)
-            ),
-            "Stand-Alone" to listOf(
-                Livro("Livro Stand-Alone", "Autor 3", isFavorite = false),
-                Livro("Livro Stand-Alone 2", "Autor 3", isFavorite = false),
-                Livro("Livro Stand-Alone 3", "Autor 3", isFavorite = false),
-                Livro("Livro Stand-Alone 4", "Autor 3", isFavorite = false)
-            )
-        )
+    // Buscar livros do Firestore
+    LaunchedEffect(Unit) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("livros")
+            .get()
+            .addOnSuccessListener { result ->
+                val groupedLivros = result.documents.mapNotNull { doc ->
+                    val titulo = doc.getString("titulo")
+                    val autor = doc.getString("autor")
+                    val genero = doc.getString("genero")
+                    val isFavorite = doc.getBoolean("isFavorite") ?: false
+                    val id = doc.id
+                    if (titulo != null && autor != null && genero != null) {
+                        genero to Livro(id, titulo, autor, isFavorite)
+                    } else {
+                        null
+                    }
+                }.groupBy({ it.first }, { it.second })
+
+                livrosPorGenero = groupedLivros
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Erro ao buscar livros: ${e.message}")
+            }
     }
 
+    // Filtro de favoritos
     val livrosFiltrados = if (showFavorites) {
         livrosPorGenero.mapValues { entry ->
             entry.value.filter { it.isFavorite }
@@ -66,7 +78,6 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Barra de pesquisa
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -105,14 +116,32 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                             LivroCard(
                                 livro = livro,
                                 onFavoriteClick = { updatedBook ->
+                                    val db = FirebaseFirestore.getInstance()
+                                    db.collection("livros")
+                                        .whereEqualTo("titulo", updatedBook.titulo)
+                                        .get()
+                                        .addOnSuccessListener { querySnapshot ->
+                                            querySnapshot.documents.forEach { doc ->
+                                                db.collection("livros").document(doc.id)
+                                                    .update("isFavorite", updatedBook.isFavorite)
+                                            }
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.e("Firestore", "Erro ao atualizar favorito: ${e.message}")
+                                        }
+
                                     val updatedList = livrosPorGenero[genero]?.map {
                                         if (it.titulo == updatedBook.titulo) updatedBook else it
                                     } ?: listOf()
-                                    livrosPorGenero[genero] = updatedList
+                                    livrosPorGenero = livrosPorGenero.toMutableMap().apply {
+                                        this[genero] = updatedList
+                                    }
                                 },
                                 onBookClick = {
                                     Log.d("LivroCard", "Livro clicado: ${livro.titulo}")
-                                    val intent = Intent(context, LivroDetalhesActivity::class.java)
+                                    val intent = Intent(context, LivroDetalhesActivity::class.java).apply {
+                                        putExtra("livroId", livro.id)
+                                    }
                                     context.startActivity(intent)
                                 }
                             )
@@ -179,7 +208,7 @@ fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livr
     }
 }
 
-data class Livro(val titulo: String, val autor: String, var isFavorite: Boolean)
+data class Livro(val id: String, val titulo: String, val autor: String, var isFavorite: Boolean)
 
 @Preview(showBackground = true)
 @Composable
