@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.readsync2.android.R
+import com.google.firebase.firestore.FirebaseFirestore
 
 class TelaPrincipalAdmin : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,24 +34,33 @@ class TelaPrincipalAdmin : ComponentActivity() {
 @Composable
 fun AdminHomeScreen(context: TelaPrincipalAdmin) {
     var searchQuery by remember { mutableStateOf("") }
+    var livrosPorGenero by remember { mutableStateOf(mapOf<String, List<Livro2>>()) } // Estado dinâmico
 
-    val livrosPorGenero = remember {
-        mutableStateMapOf(
-            "Terror" to listOf(
-                Livro2("Livro de Terror", "Autor 1")
-            ),
-            "Comédia" to listOf(
-                Livro2("Livro de Comédia", "Autor 2")
-            ),
-            "Stand-Alone" to listOf(
-                Livro2("Livro Stand-Alone", "Autor 3"),
-                Livro2("Livro Stand-Alone 2", "Autor 3"),
-                Livro2("Livro Stand-Alone 3", "Autor 3"),
-                Livro2("Livro Stand-Alone 4", "Autor 3")
-            )
-        )
+    // Função para buscar livros
+    LaunchedEffect(Unit) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("livros")
+            .get()
+            .addOnSuccessListener { result ->
+                val groupedLivros = result.documents.mapNotNull { doc ->
+                    val titulo = doc.getString("titulo")
+                    val autor = doc.getString("autor")
+                    val genero = doc.getString("genero")
+                    if (titulo != null && autor != null && genero != null) {
+                        genero to Livro2(titulo, autor)
+                    } else {
+                        null
+                    }
+                }.groupBy({ it.first }, { it.second })
+
+                livrosPorGenero = groupedLivros
+            }
+            .addOnFailureListener { e ->
+                println("Erro ao buscar livros: ${e.message}")
+            }
     }
 
+    // Interface da tela
     Column(
         modifier = Modifier
             .fillMaxSize()
