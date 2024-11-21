@@ -2,6 +2,8 @@ package com.example.readsync
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Parcelable
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.parcelize.Parcelize
 
 class TelaPrincipalAdmin : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,8 +49,9 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
                     val titulo = doc.getString("titulo")
                     val autor = doc.getString("autor")
                     val genero = doc.getString("genero")
+                    val id = doc.id
                     if (titulo != null && autor != null && genero != null) {
-                        genero to Livro2(titulo, autor)
+                        genero to Livro2(id, titulo, autor)
                     } else {
                         null
                     }
@@ -123,6 +127,8 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
 
 @Composable
 fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
+    val db = FirebaseFirestore.getInstance()
+
     Card(
         modifier = Modifier
             .width(200.dp)
@@ -167,6 +173,7 @@ fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
                 IconButton(onClick = {
                     val intent = Intent(context, LivroFormActivity::class.java).apply {
                         putExtra("isEditMode", true)
+                        putExtra("livroId", livro.id)
                     }
                     context.startActivity(intent)
                 }) {
@@ -177,7 +184,18 @@ fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
                 }
 
                 IconButton(onClick = {
-
+                    // Ação para Deletar
+                    if (livro.id != null) {
+                        db.collection("livros").document(livro.id)
+                            .delete()
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "Livro deletado com sucesso!", Toast.LENGTH_LONG).show()
+                                context.startActivity(Intent(context, TelaPrincipalAdmin::class.java))
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(context, "Erro ao deletar livro: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
                 }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_delete),
@@ -189,7 +207,8 @@ fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
     }
 }
 
-data class Livro2(val titulo: String, val autor: String)
+@Parcelize
+data class Livro2(val id: String, val titulo: String, val autor: String) : Parcelable
 
 @Preview(showBackground = true)
 @Composable

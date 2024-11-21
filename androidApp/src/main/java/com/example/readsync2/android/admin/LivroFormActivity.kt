@@ -27,15 +27,16 @@ class LivroFormActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val isEditMode = intent.getBooleanExtra("isEditMode", false)
+        val livroId = intent.getStringExtra("livroId") // Recupera o ID do livro
 
         setContent {
-            LivroFormScreen(isEditMode = isEditMode)
+            LivroFormScreen(isEditMode = isEditMode, livroId = livroId)
         }
     }
 }
 
 @Composable
-fun LivroFormScreen(isEditMode: Boolean) {
+fun LivroFormScreen(isEditMode: Boolean, livroId: String?) {
     val context = LocalContext.current
     var titulo by remember { mutableStateOf(TextFieldValue("")) }
     var autor by remember { mutableStateOf(TextFieldValue("")) }
@@ -49,6 +50,25 @@ fun LivroFormScreen(isEditMode: Boolean) {
     var isSuccess by remember { mutableStateOf(false) }
 
     val db = FirebaseFirestore.getInstance()
+
+    // Carregar os dados do livro para edição
+    if (isEditMode && livroId != null) {
+        LaunchedEffect(livroId) {
+            db.collection("livros").document(livroId).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val livro = document.data
+                        titulo = TextFieldValue(livro?.get("titulo") as String)
+                        autor = TextFieldValue(livro?.get("autor") as String)
+                        paginas = TextFieldValue((livro["paginas"] as Long).toString())
+                        dataPublicacao = TextFieldValue(livro["dataPublicacao"] as String)
+                        urlCapa = TextFieldValue(livro["urlCapa"] as String)
+                        descricao = TextFieldValue(livro["descricao"] as String)
+                        selectedGenero = livro["genero"] as String?
+                    }
+                }
+        }
+    }
 
     if (isSuccess) {
         LaunchedEffect(Unit) {
@@ -151,7 +171,20 @@ fun LivroFormScreen(isEditMode: Boolean) {
             modifier = Modifier.fillMaxWidth()
         ) {
             if (isEditMode) {
-                Button(onClick = { /* Ação para Deletar */ }) {
+                Button(onClick = {
+                    // Ação para Deletar
+                    if (livroId != null) {
+                        db.collection("livros").document(livroId)
+                            .delete()
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "Livro deletado com sucesso!", Toast.LENGTH_LONG).show()
+                                context.startActivity(Intent(context, TelaPrincipalAdmin::class.java))
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(context, "Erro ao deletar livro: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
+                }) {
                     Text("Deletar")
                 }
             }
@@ -190,14 +223,26 @@ fun LivroFormScreen(isEditMode: Boolean) {
                         "isFavorite" to false
                     )
 
-                    db.collection("livros")
-                        .add(livroData)
-                        .addOnSuccessListener {
-                            isSuccess = true // Atualiza estado para redirecionar
-                        }
-                        .addOnFailureListener { e ->
-                            Toast.makeText(context, "Erro ao salvar livro: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
+                    // Se for edição, atualiza o livro
+                    if (livroId != null) {
+                        db.collection("livros").document(livroId)
+                            .set(livroData)
+                            .addOnSuccessListener {
+                                isSuccess = true
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(context, "Erro ao salvar livro: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                    } else {
+                        db.collection("livros")
+                            .add(livroData)
+                            .addOnSuccessListener {
+                                isSuccess = true // Atualiza estado para redirecionar
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(context, "Erro ao salvar livro: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                    }
                 }
             }) {
                 Text("Salvar")
@@ -227,5 +272,5 @@ fun Chip(selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreviewLivroForm() {
-    LivroFormScreen(isEditMode = false) // Modo de adicionar
+    LivroFormScreen(isEditMode = false, livroId = null) // Modo de adicionar
 }
