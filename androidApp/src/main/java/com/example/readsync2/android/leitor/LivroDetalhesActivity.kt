@@ -36,12 +36,11 @@ fun LivroDetalhesScreen(livroId: String?) {
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
     var comentario by remember { mutableStateOf("") }
     var listaComentarios by remember { mutableStateOf(listOf<String>()) }
-
     val db = FirebaseFirestore.getInstance()
 
     LaunchedEffect(livroId) {
         if (livroId != null) {
-            // Acessando o documento corretamente
+            // Acessando o documento do livro
             db.collection("livros").document(livroId).get()
                 .addOnSuccessListener { doc ->
                     if (doc.exists()) {
@@ -58,6 +57,21 @@ fun LivroDetalhesScreen(livroId: String?) {
                 }
                 .addOnFailureListener { e ->
                     println("Erro ao buscar detalhes do livro: ${e.message}")
+                }
+
+            // Carregar os comentários do Firestore
+            db.collection("comentarios")
+                .whereEqualTo("livroId", livroId) // Filtra pelos comentários do livro específico
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    // Mapeia os comentários do Firestore para uma lista
+                    val comentarios = snapshot.documents.mapNotNull { document ->
+                        document.getString("comentario")
+                    }
+                    listaComentarios = comentarios // Atualiza a lista local com os comentários
+                }
+                .addOnFailureListener { e ->
+                    println("Erro ao carregar os comentários: ${e.message}")
                 }
         } else {
             println("ID do livro está vazio.")
@@ -120,14 +134,19 @@ fun LivroDetalhesScreen(livroId: String?) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Exibe os comentários
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 80.dp) // Espaço para a seção de adicionar comentários
-            ) {
-                items(listaComentarios) { comentario ->
-                    Text(text = comentario, modifier = Modifier.padding(8.dp))
+            if (listaComentarios.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 80.dp) // Espaço para a seção de adicionar comentários
+                ) {
+                    items(listaComentarios) { comentario ->
+                        Text(text = comentario, modifier = Modifier.padding(8.dp))
+                    }
                 }
+            } else {
+                // Exibe uma mensagem caso não haja comentários
+                Text(text = "Ainda não há comentários para este livro.", modifier = Modifier.padding(8.dp))
             }
         }
 
@@ -148,9 +167,23 @@ fun LivroDetalhesScreen(livroId: String?) {
             Spacer(modifier = Modifier.width(8.dp))
 
             IconButton(onClick = {
-                if (comentario.isNotEmpty()) {
-                    listaComentarios = listaComentarios + comentario
-                    comentario = ""
+                if (comentario.isNotEmpty() && livroId != null) {
+                    // Salvar o comentário no Firestore
+                    val comentarioData = hashMapOf(
+                        "livroId" to livroId,
+                        "comentario" to comentario
+                    )
+
+                    db.collection("comentarios")
+                        .add(comentarioData)
+                        .addOnSuccessListener {
+                            // Adicionando o comentário à lista local
+                            listaComentarios = listaComentarios + comentario
+                            comentario = "" // Limpar o campo de comentário
+                        }
+                        .addOnFailureListener { e ->
+                            println("Erro ao adicionar comentário: ${e.message}")
+                        }
                 }
             }) {
                 Icon(
