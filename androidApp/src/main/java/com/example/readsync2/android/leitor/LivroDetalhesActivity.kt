@@ -116,6 +116,16 @@ fun LivroDetalhesScreen(livroId: String?) {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+            // Botão de voltar
+            Button(
+                onClick = { (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() },
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Text("Voltar")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Capa do livro
             Box(
                 modifier = Modifier.fillMaxWidth(),

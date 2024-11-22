@@ -71,6 +71,16 @@ fun LoginScreen(context: LeitorLoginActivity, auth: FirebaseAuth) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Botão de voltar
+        Button(
+            onClick = { (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() },
+            modifier = Modifier.align(Alignment.Start)
+        ) {
+            Text("Voltar")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = "Login Leitor",
             fontSize = 24.sp,
@@ -168,7 +178,9 @@ fun loginWithEmail(
             if (task.isSuccessful) {
                 val user = auth.currentUser
                 user?.let {
-                    val intent = Intent(context, TelaPrincipalLeitor::class.java)
+                    val intent = Intent(context, TelaPrincipalLeitor::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
                     startActivity(context, intent, null)
                 }
             } else {
@@ -204,8 +216,10 @@ fun firebaseAuthWithGoogle(idToken: String, auth: FirebaseAuth, context: Context
                 val user = auth.currentUser
                 user?.let {
                     Log.d("GoogleSignIn", "Login bem-sucedido com o Google")
-                    val intent = Intent(context, TelaPrincipalLeitor::class.java)
-                    context.startActivity(intent)
+                    val intent = Intent(context, TelaPrincipalLeitor::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(context, intent, null)
                     (context as? Activity)?.finish()
                 }
             } else {

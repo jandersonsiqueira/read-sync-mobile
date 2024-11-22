@@ -74,7 +74,9 @@ class CadastroActivity : ComponentActivity() {
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    val intent = Intent(this, TelaPrincipalLeitor::class.java)
+                    val intent = Intent(this, TelaPrincipalLeitor::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
                     startActivity(intent)
                 } else {
                 }
@@ -102,6 +104,16 @@ fun CadastroScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Botão de voltar
+        Button(
+            onClick = { (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() },
+            modifier = Modifier.align(Alignment.Start)
+        ) {
+            Text("Voltar")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = "Cadastro",
             fontSize = 24.sp,
@@ -156,7 +168,9 @@ fun CadastroScreen(
                         .addOnCompleteListener { task ->
                             isLoading = false
                             if (task.isSuccessful) {
-                                val intent = Intent(context, TelaPrincipalLeitor::class.java)
+                                val intent = Intent(context, TelaPrincipalLeitor::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
                                 startActivity(context, intent, null)
                             } else {
                                 errorMessage = "Erro ao criar a conta. Tente novamente."
