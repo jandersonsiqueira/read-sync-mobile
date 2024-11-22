@@ -62,6 +62,16 @@ fun AdminLoginScreen(context: AdminLoginActivity) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Botão de voltar
+        Button(
+            onClick = { (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() },
+            modifier = Modifier.align(Alignment.Start)
+        ) {
+            Text("Voltar")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = "Login Administrador",
             fontSize = 24.sp,
