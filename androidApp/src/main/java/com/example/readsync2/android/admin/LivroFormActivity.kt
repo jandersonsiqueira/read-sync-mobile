@@ -45,7 +45,7 @@ fun LivroFormScreen(isEditMode: Boolean, livroId: String?) {
     var urlCapa by remember { mutableStateOf(TextFieldValue("")) }
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
 
-    val generoOptions = listOf("Terror", "Comédia", "Stand-Alone", "Aventura", "Ficção Científica", "Romance")
+    val generoOptions = listOf("Terror", "Comédia", "Drama", "Stand-Alone", "Aventura", "Ficção Científica", "Romance")
     var selectedGenero by remember { mutableStateOf<String?>(null) }
     var isSuccess by remember { mutableStateOf(false) }
 
