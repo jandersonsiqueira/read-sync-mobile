@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -50,8 +51,9 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                     val genero = doc.getString("genero")
                     val isFavorite = doc.getBoolean("isFavorite") ?: false
                     val id = doc.id
+                    val urlCapa = doc.getString("urlCapa")
                     if (titulo != null && autor != null && genero != null) {
-                        genero to Livro(id, titulo, autor, isFavorite)
+                        genero to Livro(id, titulo, autor, isFavorite, urlCapa)
                     } else {
                         null
                     }
@@ -168,12 +170,14 @@ fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livr
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_book),
+            AsyncImage(
+                model = livro.urlCapa,
                 contentDescription = "Capa do livro",
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(bottom = 8.dp)
+                modifier = Modifier.
+                    size(120.dp).
+                    padding(bottom = 8.dp),
+                placeholder = painterResource(id = R.drawable.ic_book),
+                error = painterResource(id = R.drawable.ic_book)
             )
 
             Column(
@@ -208,7 +212,7 @@ fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livr
     }
 }
 
-data class Livro(val id: String, val titulo: String, val autor: String, var isFavorite: Boolean)
+data class Livro(val id: String, val titulo: String, val autor: String, var isFavorite: Boolean, val urlCapa: String?)
 
 @Preview(showBackground = true)
 @Composable

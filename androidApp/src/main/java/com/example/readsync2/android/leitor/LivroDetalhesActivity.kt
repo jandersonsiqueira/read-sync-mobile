@@ -20,9 +20,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +46,7 @@ class LivroDetalhesActivity : ComponentActivity() {
 @Composable
 fun LivroDetalhesScreen(livroId: String?) {
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
+    var capaUrl by remember { mutableStateOf("") }
     var comentario by remember { mutableStateOf("") }
     var listaComentarios by remember { mutableStateOf(listOf<String>()) }
     val db = FirebaseFirestore.getInstance()
@@ -65,13 +74,9 @@ fun LivroDetalhesScreen(livroId: String?) {
             db.collection("livros").document(livroId).get()
                 .addOnSuccessListener { doc ->
                     if (doc.exists()) {
-                        // Garantir que o campo 'descricao' existe e é do tipo String
-                        val descricaoCampo = doc.getString("descricao")
-                        if (descricaoCampo != null) {
-                            descricao = TextFieldValue(descricaoCampo)
-                        } else {
-                            println("Descrição não encontrada ou campo não é uma string.")
-                        }
+                        // Carregar a URL da capa
+                        capaUrl = doc.getString("urlCapa") ?: ""
+                        descricao = TextFieldValue(doc.getString("descricao") ?: "")
                     } else {
                         println("Documento não encontrado.")
                     }
@@ -110,10 +115,12 @@ fun LivroDetalhesScreen(livroId: String?) {
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_book),
+                AsyncImage(
+                    model = capaUrl,
                     contentDescription = "Capa do livro",
-                    modifier = Modifier.size(128.dp)
+                    modifier = Modifier.size(250.dp),
+                    placeholder = painterResource(id = R.drawable.ic_book),
+                    error = painterResource(id = R.drawable.ic_book)
                 )
             }
 
