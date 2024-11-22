@@ -20,9 +20,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,14 +46,19 @@ class LivroDetalhesActivity : ComponentActivity() {
 @Composable
 fun LivroDetalhesScreen(livroId: String?) {
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
+    var capaUrl by remember { mutableStateOf("") }
     var comentario by remember { mutableStateOf("") }
     var listaComentarios by remember { mutableStateOf(listOf<String>()) }
+    var titulo by remember { mutableStateOf("") }
+    var autor by remember { mutableStateOf("") }
+    var dataPublicacao by remember { mutableStateOf("") }
+    var genero by remember { mutableStateOf("") }
+    var paginas by remember { mutableStateOf(TextFieldValue("")) }
     val db = FirebaseFirestore.getInstance()
 
     val context = LocalContext.current
     var tts: TextToSpeech? by remember { mutableStateOf(null) }
 
-    // Inicializando o TextToSpeech
     LaunchedEffect(context) {
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -65,13 +78,13 @@ fun LivroDetalhesScreen(livroId: String?) {
             db.collection("livros").document(livroId).get()
                 .addOnSuccessListener { doc ->
                     if (doc.exists()) {
-                        // Garantir que o campo 'descricao' existe e é do tipo String
-                        val descricaoCampo = doc.getString("descricao")
-                        if (descricaoCampo != null) {
-                            descricao = TextFieldValue(descricaoCampo)
-                        } else {
-                            println("Descrição não encontrada ou campo não é uma string.")
-                        }
+                        capaUrl = doc.getString("urlCapa") ?: ""
+                        descricao = TextFieldValue(doc.getString("descricao") ?: "")
+                        titulo = doc.getString("titulo") ?: ""
+                        autor = doc.getString("autor") ?: ""
+                        dataPublicacao = doc.getString("dataPublicacao") ?: ""
+                        genero = doc.getString("genero") ?: ""
+                        paginas = TextFieldValue((doc["paginas"] as Long).toString())
                     } else {
                         println("Documento não encontrado.")
                     }
@@ -80,16 +93,14 @@ fun LivroDetalhesScreen(livroId: String?) {
                     println("Erro ao buscar detalhes do livro: ${e.message}")
                 }
 
-            // Carregar os comentários do Firestore
             db.collection("comentarios")
-                .whereEqualTo("livroId", livroId) // Filtra pelos comentários do livro específico
+                .whereEqualTo("livroId", livroId)
                 .get()
                 .addOnSuccessListener { snapshot ->
-                    // Mapeia os comentários do Firestore para uma lista
                     val comentarios = snapshot.documents.mapNotNull { document ->
                         document.getString("comentario")
                     }
-                    listaComentarios = comentarios // Atualiza a lista local com os comentários
+                    listaComentarios = comentarios
                 }
                 .addOnFailureListener { e ->
                     println("Erro ao carregar os comentários: ${e.message}")
@@ -110,36 +121,126 @@ fun LivroDetalhesScreen(livroId: String?) {
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_book),
+                AsyncImage(
+                    model = capaUrl,
                     contentDescription = "Capa do livro",
-                    modifier = Modifier.size(128.dp)
+                    modifier = Modifier.size(150.dp),
+                    placeholder = painterResource(id = R.drawable.ic_book),
+                    error = painterResource(id = R.drawable.ic_book)
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Descrição do livro com botão de áudio
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Descrição: ${descricao.text}",
-                    fontSize = 16.sp,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = {
-                    tts?.speak(descricao.text, TextToSpeech.QUEUE_FLUSH, null, null)
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_play),
-                        contentDescription = "Ler descrição",
-                        modifier = Modifier.size(32.dp)
+            // Informações do livro
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Título: $titulo",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
                     )
+                    IconButton(onClick = {
+                        tts?.speak("Título: $titulo", TextToSpeech.QUEUE_FLUSH, null, null)
+                    }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = "Ler título",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Autor: $autor",
+                        fontSize = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        tts?.speak("Autor: $autor", TextToSpeech.QUEUE_FLUSH, null, null)
+                    }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = "Ler autor",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Data de Publicação: $dataPublicacao",
+                        fontSize = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        tts?.speak("Data de Publicação: $dataPublicacao", TextToSpeech.QUEUE_FLUSH, null, null)
+                    }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = "Ler data de publicação",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Gênero: $genero",
+                        fontSize = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        tts?.speak("Gênero: $genero", TextToSpeech.QUEUE_FLUSH, null, null)
+                    }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = "Ler gênero",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Páginas: ${paginas.text}",
+                        fontSize = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        tts?.speak("Numero de Páginas: ${paginas.text}", TextToSpeech.QUEUE_FLUSH, null, null)
+                    }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = "Ler páginas",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Descrição: ${descricao.text}",
+                        fontSize = 16.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        tts?.speak("Descrição: ${descricao.text}", TextToSpeech.QUEUE_FLUSH, null, null)
+                    }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = "Ler descrição",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Seção de comentários com botão de áudio
+            // Comentários
             if (listaComentarios.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier
@@ -155,24 +256,23 @@ fun LivroDetalhesScreen(livroId: String?) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_play),
                                     contentDescription = "Ler comentário",
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
                     }
                 }
             } else {
-                // Exibe uma mensagem caso não haja comentários
                 Text(text = "Ainda não há comentários para este livro.", modifier = Modifier.padding(8.dp))
             }
         }
 
-        // Seção fixa para adicionar comentários
+        // Campo de adicionar comentário
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.BottomCenter) // Fixa no fundo da tela
+                .align(Alignment.BottomCenter)
         ) {
             OutlinedTextField(
                 value = comentario,
@@ -180,23 +280,18 @@ fun LivroDetalhesScreen(livroId: String?) {
                 label = { Text("Escreva seu comentário") },
                 modifier = Modifier.weight(1f)
             )
-
             Spacer(modifier = Modifier.width(8.dp))
-
             IconButton(onClick = {
                 if (comentario.isNotEmpty() && livroId != null) {
-                    // Salvar o comentário no Firestore
                     val comentarioData = hashMapOf(
                         "livroId" to livroId,
                         "comentario" to comentario
                     )
-
                     db.collection("comentarios")
                         .add(comentarioData)
                         .addOnSuccessListener {
-                            // Adicionando o comentário à lista local
                             listaComentarios = listaComentarios + comentario
-                            comentario = "" // Limpar o campo de comentário
+                            comentario = ""
                         }
                         .addOnFailureListener { e ->
                             println("Erro ao adicionar comentário: ${e.message}")

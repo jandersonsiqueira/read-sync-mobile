@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.parcelize.Parcelize
@@ -50,8 +51,9 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
                     val autor = doc.getString("autor")
                     val genero = doc.getString("genero")
                     val id = doc.id
+                    val urlCapa = doc.getString("urlCapa")
                     if (titulo != null && autor != null && genero != null) {
-                        genero to Livro2(id, titulo, autor)
+                        genero to Livro2(id, titulo, autor, urlCapa)
                     } else {
                         null
                     }
@@ -141,12 +143,14 @@ fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_book),
+            AsyncImage(
+                model = livro.urlCapa,
                 contentDescription = "Capa do livro",
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(bottom = 8.dp)
+                modifier = Modifier.
+                size(120.dp).
+                padding(bottom = 8.dp),
+                placeholder = painterResource(id = R.drawable.ic_book),
+                error = painterResource(id = R.drawable.ic_book)
             )
 
             Column(
@@ -208,7 +212,7 @@ fun LivroCardAdmin(livro: Livro2, context: TelaPrincipalAdmin) {
 }
 
 @Parcelize
-data class Livro2(val id: String, val titulo: String, val autor: String) : Parcelable
+data class Livro2(val id: String, val titulo: String, val autor: String, val urlCapa: String?) : Parcelable
 
 @Preview(showBackground = true)
 @Composable
