@@ -80,6 +80,18 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        Button(
+            onClick = {
+                val intent = Intent(context, TelaChatbot::class.java)
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Text("Ir para Chatbot")
+        }
+
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },

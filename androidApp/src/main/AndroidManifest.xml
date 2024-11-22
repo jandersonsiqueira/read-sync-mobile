@@ -30,6 +30,7 @@
         <activity android:name="com.example.readsync.TelaPrincipalLeitor" />
         <activity android:name="com.example.readsync.CadastroActivity" />
         <activity android:name="com.example.readsync.LivroDetalhesActivity" />
+        <activity android:name="com.example.readsync.TelaChatbot" />
 
     </application>
 
