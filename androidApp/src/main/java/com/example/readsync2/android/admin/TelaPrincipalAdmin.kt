@@ -39,6 +39,7 @@ class TelaPrincipalAdmin : ComponentActivity() {
 fun AdminHomeScreen(context: TelaPrincipalAdmin) {
     var searchQuery by remember { mutableStateOf("") }
     var livrosPorGenero by remember { mutableStateOf(mapOf<String, List<Livro2>>()) } // Estado dinâmico
+    var livrosFiltradosPorGenero by remember { mutableStateOf(mapOf<String, List<Livro2>>()) }
 
     // Função para buscar livros
     LaunchedEffect(Unit) {
@@ -60,10 +61,22 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
                 }.groupBy({ it.first }, { it.second })
 
                 livrosPorGenero = groupedLivros
+                livrosFiltradosPorGenero = groupedLivros // Inicialmente, exibe todos os livros
             }
             .addOnFailureListener { e ->
                 println("Erro ao buscar livros: ${e.message}")
             }
+    }
+
+    // Atualiza os livros filtrados quando a query de pesquisa muda
+    LaunchedEffect(searchQuery) {
+        livrosFiltradosPorGenero = if (searchQuery.isBlank()) {
+            livrosPorGenero
+        } else {
+            livrosPorGenero.mapValues { (_, livros) ->
+                livros.filter { it.titulo.contains(searchQuery, ignoreCase = true) }
+            }.filter { it.value.isNotEmpty() }
+        }
     }
 
     // Interface da tela
@@ -102,7 +115,7 @@ fun AdminHomeScreen(context: TelaPrincipalAdmin) {
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            livrosPorGenero.forEach { (genero, livros) ->
+            livrosFiltradosPorGenero.forEach { (genero, livros) ->
                 item {
                     Text(
                         text = genero,
