@@ -31,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,13 +49,15 @@ fun LivroDetalhesScreen(livroId: String?) {
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
     var capaUrl by remember { mutableStateOf("") }
     var comentario by remember { mutableStateOf("") }
-    var listaComentarios by remember { mutableStateOf(listOf<String>()) }
+    var listaComentarios by remember { mutableStateOf(listOf<Map<String, String>>()) }
     var titulo by remember { mutableStateOf("") }
     var autor by remember { mutableStateOf("") }
     var dataPublicacao by remember { mutableStateOf("") }
     var genero by remember { mutableStateOf("") }
     var paginas by remember { mutableStateOf(TextFieldValue("")) }
     val db = FirebaseFirestore.getInstance()
+    val user = FirebaseAuth.getInstance().currentUser
+    val nomeUsuario = user?.displayName ?: "Anônimo"
 
     val context = LocalContext.current
     var tts: TextToSpeech? by remember { mutableStateOf(null) }
@@ -98,7 +101,10 @@ fun LivroDetalhesScreen(livroId: String?) {
                 .get()
                 .addOnSuccessListener { snapshot ->
                     val comentarios = snapshot.documents.mapNotNull { document ->
-                        document.getString("comentario")
+                        mapOf(
+                            "comentario" to (document.getString("comentario") ?: ""),
+                            "nomeUsuario" to (document.getString("nomeUsuario") ?: "Anônimo")
+                        )
                     }
                     listaComentarios = comentarios
                 }
@@ -257,11 +263,18 @@ fun LivroDetalhesScreen(livroId: String?) {
                         .fillMaxSize()
                         .padding(bottom = 80.dp)
                 ) {
-                    items(listaComentarios) { comentario ->
+                    items(listaComentarios) { comentarioMap ->
+                        val comentario = comentarioMap["comentario"] ?: ""
+                        val nomeUsuario = comentarioMap["nomeUsuario"] ?: ""
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = comentario, modifier = Modifier.weight(1f))
+                            Text(
+                                text = "${nomeUsuario}: ${comentario}",
+                                modifier = Modifier.weight(1f)
+                            )
                             IconButton(onClick = {
-                                tts?.speak(comentario, TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts?.speak("Numero de Páginas: ${paginas.text}", TextToSpeech.QUEUE_FLUSH, null, null)
+                                tts?.speak("{$nomeUsuario} disse:  ${comentario}", TextToSpeech.QUEUE_FLUSH, null, null)
                             }) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_play),
@@ -295,19 +308,25 @@ fun LivroDetalhesScreen(livroId: String?) {
                 if (comentario.isNotEmpty() && livroId != null) {
                     val comentarioData = hashMapOf(
                         "livroId" to livroId,
-                        "comentario" to comentario
+                        "comentario" to comentario,
+                        "nomeUsuario" to nomeUsuario
                     )
+
                     db.collection("comentarios")
                         .add(comentarioData)
                         .addOnSuccessListener {
-                            listaComentarios = listaComentarios + comentario
+                            listaComentarios = listaComentarios + mapOf(
+                                "nomeUsuario" to nomeUsuario,
+                                "comentario" to comentario
+                            )
                             comentario = ""
                         }
                         .addOnFailureListener { e ->
                             println("Erro ao adicionar comentário: ${e.message}")
                         }
                 }
-            }) {
+            })
+            {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_send),
                     contentDescription = "Enviar",
