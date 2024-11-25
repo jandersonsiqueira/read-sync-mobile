@@ -26,6 +26,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
+import com.google.firebase.auth.ktx.userProfileChangeRequest
 
 class CadastroActivity : ComponentActivity() {
     private lateinit var auth: FirebaseAuth
@@ -168,10 +169,21 @@ fun CadastroScreen(
                         .addOnCompleteListener { task ->
                             isLoading = false
                             if (task.isSuccessful) {
-                                val intent = Intent(context, TelaPrincipalLeitor::class.java).apply {
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                val user = auth.currentUser
+                                val profileUpdates = userProfileChangeRequest {
+                                    displayName = usuario
                                 }
-                                startActivity(context, intent, null)
+                                user?.updateProfile(profileUpdates)
+                                    ?.addOnCompleteListener { updateTask ->
+                                        if (updateTask.isSuccessful) {
+                                            val intent = Intent(context, TelaPrincipalLeitor::class.java).apply {
+                                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            }
+                                            startActivity(context, intent, null)
+                                        } else {
+                                            errorMessage = "Erro ao atualizar o perfil. Tente novamente."
+                                        }
+                                    }
                             } else {
                                 errorMessage = "Erro ao criar a conta. Tente novamente."
                             }
