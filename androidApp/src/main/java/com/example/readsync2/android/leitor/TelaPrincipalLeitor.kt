@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -192,14 +193,25 @@ fun LivroCard(livro: Livro, onFavoriteClick: (Livro) -> Unit, onBookClick: (Livr
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = livro.urlCapa,
                 contentDescription = "Capa do livro",
-                modifier = Modifier.
-                    size(120.dp).
-                    padding(bottom = 8.dp),
-                placeholder = painterResource(id = R.drawable.ic_book),
-                error = painterResource(id = R.drawable.ic_book)
+                modifier = Modifier.size(120.dp),
+                loading = {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                },
+                error = {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_book),
+                        contentDescription = "Erro ao carregar imagem",
+                        modifier = Modifier.size(120.dp)
+                    )
+                }
             )
 
             Column(
