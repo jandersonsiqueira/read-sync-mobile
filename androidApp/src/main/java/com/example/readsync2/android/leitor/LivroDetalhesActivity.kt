@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage
 import com.example.readsync2.android.R
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
@@ -31,7 +31,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 class LivroDetalhesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,7 +45,7 @@ class LivroDetalhesActivity : ComponentActivity() {
         }
     }
 }
-
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun LivroDetalhesScreen(livroId: String?) {
     var descricao by remember { mutableStateOf(TextFieldValue("")) }
@@ -75,9 +77,12 @@ fun LivroDetalhesScreen(livroId: String?) {
         }
     }
 
+    val modalBottomSheetState =
+        rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(livroId) {
         if (livroId != null) {
-            // Acessando o documento do livro
             db.collection("livros").document(livroId).get()
                 .addOnSuccessListener { doc ->
                     if (doc.exists()) {
@@ -108,49 +113,22 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                     listaComentarios = comentarios
                 }
-                .addOnFailureListener { e ->
-                    println("Erro ao carregar os comentários: ${e.message}")
-                }
-        } else {
-            println("ID do livro está vazio.")
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Botão de voltar
-            Button(
-                onClick = { (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() },
-                modifier = Modifier.align(Alignment.Start)
+    ModalBottomSheetLayout(
+        sheetState = modalBottomSheetState,
+        sheetContent = {
+            // Conteúdo do painel deslizante
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
-                Text("Voltar")
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Capa do livro
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = capaUrl,
-                    contentDescription = "Capa do livro",
-                    modifier = Modifier.size(150.dp),
-                    placeholder = painterResource(id = R.drawable.ic_book),
-                    error = painterResource(id = R.drawable.ic_book)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Informações do livro
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = "Título: $titulo",
                         fontSize = 18.sp,
@@ -168,7 +146,12 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = "Autor: $autor",
                         fontSize = 16.sp,
@@ -185,10 +168,15 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = "Data de Publicação: $dataPublicacao",
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
@@ -202,10 +190,15 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = "Gênero: $genero",
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
@@ -219,14 +212,19 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = "Páginas: ${paginas.text}",
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
-                        tts?.speak("Numero de Páginas: ${paginas.text}", TextToSpeech.QUEUE_FLUSH, null, null)
+                        tts?.speak("Número de Páginas: ${paginas.text}", TextToSpeech.QUEUE_FLUSH, null, null)
                     }) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_play),
@@ -236,10 +234,15 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
                         text = "Descrição: ${descricao.text}",
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
@@ -253,85 +256,135 @@ fun LivroDetalhesScreen(livroId: String?) {
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Comentários
-            if (listaComentarios.isNotEmpty()) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 80.dp)
+        }
+    ) {
+        // Corpo principal
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Button(
+                    onClick = { (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed() },
+                    modifier = Modifier.align(Alignment.Start)
                 ) {
-                    items(listaComentarios) { comentarioMap ->
-                        val comentario = comentarioMap["comentario"] ?: ""
-                        val nomeUsuario = comentarioMap["nomeUsuario"] ?: ""
+                    Text("Voltar")
+                }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "${nomeUsuario}: ${comentario}",
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = {
-                                tts?.speak("Numero de Páginas: ${paginas.text}", TextToSpeech.QUEUE_FLUSH, null, null)
-                                tts?.speak("{$nomeUsuario} disse:  ${comentario}", TextToSpeech.QUEUE_FLUSH, null, null)
-                            }) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_play),
-                                    contentDescription = "Ler comentário",
-                                    modifier = Modifier.size(20.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(onClick = { scope.launch { modalBottomSheetState.show() } }) {
+                    Text(text = "Abrir Detalhes do Livro")
+                }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+                // Capa do livro
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                SubcomposeAsyncImage(
+                    model = capaUrl,
+                    contentDescription = "Capa do livro",
+                    modifier = Modifier.size(150.dp),
+                    loading = {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    },
+                    error = {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_book),
+                            contentDescription = "Erro ao carregar imagem",
+                            modifier = Modifier.size(150.dp)
+                        )
+                    }
+                )
+            }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Lista de comentários
+                if (listaComentarios.isNotEmpty()) {
+                    LazyColumn {
+                        items(listaComentarios) { comentarioMap ->
+                            val comentario = comentarioMap["comentario"] ?: ""
+                            val nomeUsuario = comentarioMap["nomeUsuario"] ?: ""
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "${nomeUsuario}: ${comentario}",
+                                    modifier = Modifier.weight(1f)
                                 )
+                                IconButton(onClick = {
+                                    tts?.speak(
+                                        "{$nomeUsuario} disse:  ${comentario}",
+                                        TextToSpeech.QUEUE_FLUSH,
+                                        null,
+                                        null
+                                    )
+                                }) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_play),
+                                        contentDescription = "Ler comentário",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                Text(text = "Ainda não há comentários para este livro.", modifier = Modifier.padding(8.dp))
-            }
-        }
-
-        // Campo de adicionar comentário
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .align(Alignment.BottomCenter)
-        ) {
-            OutlinedTextField(
-                value = comentario,
-                onValueChange = { comentario = it },
-                label = { Text("Escreva seu comentário") },
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = {
-                if (comentario.isNotEmpty() && livroId != null) {
-                    val comentarioData = hashMapOf(
-                        "livroId" to livroId,
-                        "comentario" to comentario,
-                        "nomeUsuario" to nomeUsuario
+                } else {
+                    Text(
+                        text = "Ainda não há comentários para este livro.",
+                        modifier = Modifier.padding(8.dp)
                     )
-
-                    db.collection("comentarios")
-                        .add(comentarioData)
-                        .addOnSuccessListener {
-                            listaComentarios = listaComentarios + mapOf(
-                                "nomeUsuario" to nomeUsuario,
-                                "comentario" to comentario
-                            )
-                            comentario = ""
-                        }
-                        .addOnFailureListener { e ->
-                            println("Erro ao adicionar comentário: ${e.message}")
-                        }
                 }
-            })
-            {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_send),
-                    contentDescription = "Enviar",
-                    modifier = Modifier.size(32.dp)
+            }
+
+            // Campo de adicionar comentário
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .align(Alignment.BottomCenter)
+            ) {
+                OutlinedTextField(
+                    value = comentario,
+                    onValueChange = { comentario = it },
+                    label = { Text("Escreva seu comentário") },
+                    modifier = Modifier.weight(1f)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = {
+                    if (comentario.isNotEmpty() && livroId != null) {
+                        val comentarioData = hashMapOf(
+                            "livroId" to livroId,
+                            "comentario" to comentario,
+                            "nomeUsuario" to nomeUsuario
+                        )
+
+                        db.collection("comentarios")
+                            .add(comentarioData)
+                            .addOnSuccessListener {
+                                listaComentarios = listaComentarios + mapOf(
+                                    "nomeUsuario" to nomeUsuario,
+                                    "comentario" to comentario
+                                )
+                                comentario = ""
+                            }
+                            .addOnFailureListener { e ->
+                                println("Erro ao adicionar comentário: ${e.message}")
+                            }
+                    }
+                })
+                {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_send),
+                        contentDescription = "Enviar",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
     }
