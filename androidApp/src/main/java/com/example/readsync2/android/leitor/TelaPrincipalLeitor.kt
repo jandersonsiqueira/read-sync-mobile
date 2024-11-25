@@ -38,6 +38,7 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
     var searchQuery by remember { mutableStateOf("") }
     var showFavorites by remember { mutableStateOf(false) }
     var livrosPorGenero by remember { mutableStateOf(mapOf<String, List<Livro>>()) }
+    var livrosFiltradosPorGenero by remember { mutableStateOf(mapOf<String, List<Livro>>()) }
 
     // Buscar livros do Firestore
     LaunchedEffect(Unit) {
@@ -60,11 +61,23 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                 }.groupBy({ it.first }, { it.second })
 
                 livrosPorGenero = groupedLivros
+                livrosFiltradosPorGenero = groupedLivros // Inicialmente, exibe todos os livros
             }
             .addOnFailureListener { e ->
                 Log.e("Firestore", "Erro ao buscar livros: ${e.message}")
             }
     }
+
+    // Atualiza os livros filtrados quando a query de pesquisa muda
+    LaunchedEffect(searchQuery, showFavorites, livrosPorGenero) {
+        livrosFiltradosPorGenero = livrosPorGenero.mapValues { (_, livros) ->
+            livros.filter { livro ->
+                (searchQuery.isBlank() || livro.titulo.contains(searchQuery, ignoreCase = true)) &&
+                        (!showFavorites || livro.isFavorite)
+            }
+        }.filterValues { it.isNotEmpty() }
+    }
+
 
     // Filtro de favoritos
     val livrosFiltrados = if (showFavorites) {
@@ -115,7 +128,7 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            livrosFiltrados.forEach { (genero, livros) ->
+            livrosFiltradosPorGenero.forEach { (genero, livros) ->
                 item {
                     Text(
                         text = genero,
@@ -132,23 +145,20 @@ fun ReaderHomeScreen(context: TelaPrincipalLeitor) {
                                 onFavoriteClick = { updatedBook ->
                                     val db = FirebaseFirestore.getInstance()
                                     db.collection("livros")
-                                        .whereEqualTo("titulo", updatedBook.titulo)
-                                        .get()
-                                        .addOnSuccessListener { querySnapshot ->
-                                            querySnapshot.documents.forEach { doc ->
-                                                db.collection("livros").document(doc.id)
-                                                    .update("isFavorite", updatedBook.isFavorite)
-                                            }
+                                        .document(updatedBook.id)
+                                        .update("isFavorite", updatedBook.isFavorite)
+                                        .addOnSuccessListener {
+                                            Log.d("Firestore", "Livro atualizado com sucesso!")
                                         }
                                         .addOnFailureListener { e ->
                                             Log.e("Firestore", "Erro ao atualizar favorito: ${e.message}")
                                         }
 
-                                    val updatedList = livrosPorGenero[genero]?.map {
-                                        if (it.titulo == updatedBook.titulo) updatedBook else it
-                                    } ?: listOf()
-                                    livrosPorGenero = livrosPorGenero.toMutableMap().apply {
-                                        this[genero] = updatedList
+                                    // Atualiza o estado local
+                                    livrosPorGenero = livrosPorGenero.mapValues { (genero, livros) ->
+                                        livros.map { livro ->
+                                            if (livro.id == updatedBook.id) updatedBook else livro
+                                        }
                                     }
                                 },
                                 onBookClick = {
