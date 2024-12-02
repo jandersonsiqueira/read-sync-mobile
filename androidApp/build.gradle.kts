@@ -54,4 +54,5 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx:21.0.1")
     implementation("com.google.android.gms:play-services-auth:20.5.0")
     implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
 }
