@@ -17,6 +17,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import android.util.Log
+import okhttp3.*
+import org.json.JSONObject
+import java.io.IOException
 
 class TelaChatbot : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,7 +37,6 @@ class TelaChatbot : ComponentActivity() {
 fun ChatbotScreen() {
     var userInput by remember { mutableStateOf("") }
     var chatHistory by remember { mutableStateOf(listOf<String>()) }
-
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
@@ -40,7 +44,6 @@ fun ChatbotScreen() {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Exibe o histórico do chat
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -60,32 +63,50 @@ fun ChatbotScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Row para incluir o botão dentro do campo de entrada
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)  // Espaço entre os elementos
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Campo para entrada do usuário
             OutlinedTextField(
                 value = userInput,
                 onValueChange = { userInput = it },
                 label = { Text("Digite sua mensagem") },
-                modifier = Modifier.weight(1f)  // Preenche o espaço disponível
+                modifier = Modifier.weight(1f)
             )
 
-            // Botão de enviar mensagem
             Button(
                 onClick = {
                     if (userInput.isNotBlank()) {
-                        // Simula uma resposta automática do chatbot
-                        val response = "Resposta automática: $userInput"
-                        chatHistory = chatHistory + "Você: $userInput" + "Chatbot: $response"
-                        userInput = ""
+                        // Exibe a mensagem do usuário no histórico
+                        chatHistory = chatHistory + "Você: $userInput"
 
+                        // Faz a requisição para o endpoint
+                        val client = OkHttpClient()
+                        val json = JSONObject().put("pergunta", userInput).toString()
+                        val requestBody = RequestBody.create("application/json".toMediaTypeOrNull(), json)
+                        val request = Request.Builder()
+                            .url("https://api-gemini-1ck0.onrender.com/chat")
+                            .post(requestBody)
+                            .build()
+
+                        client.newCall(request).enqueue(object : Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+                                Log.e("Chatbot", "Erro na requisição: $e")
+                                chatHistory = chatHistory + "Erro: Não foi possível obter resposta."
+                            }
+
+                            override fun onResponse(call: Call, response: Response) {
+                                val respostaJson = response.body?.string()
+                                val respostaTexto = JSONObject(respostaJson).getString("resposta")
+                                chatHistory = chatHistory + "Chatbot: $respostaTexto"
+                            }
+                        })
+
+                        userInput = ""
                         keyboardController?.hide()
                     }
                 },
-                modifier = Modifier.align(Alignment.CenterVertically)  // Alinha o botão ao centro verticalmente
+                modifier = Modifier.align(Alignment.CenterVertically)
             ) {
                 Text("Enviar")
             }
