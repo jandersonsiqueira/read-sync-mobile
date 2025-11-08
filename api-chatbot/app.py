@@ -5,7 +5,11 @@ import os
 app = Quart(__name__)
 
 # Configure sua chave de API do Gemini
-genai.configure(api_key=os.getenv('AIzaSyDNl7RYhfhe-tNZdjn1wkKhOkS2v0FUHXo'))
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("A variável de ambiente GEMINI_API_KEY não foi configurada.")
+
+genai.configure(api_key=api_key)
 
 # Endpoint para o chat
 @app.route('/chat', methods=['POST'])
